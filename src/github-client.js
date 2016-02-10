@@ -68,8 +68,8 @@ const cacheHandler = new class CacheHandler {
           try {
             this.storage.setItem('octokat-cache', JSON.stringify(this.cachedETags));
           } catch (e) {
-            this.cachedETags = {};
             this._dumpCache();
+            this.cachedETags = {};
           }
         };
         this.pendingTimeout = setTimeout(saveCache, 5 * 1000);
@@ -77,6 +77,49 @@ const cacheHandler = new class CacheHandler {
     }
   }
 };
+
+const ISSUE_URL_RE = /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/repos\/[^\/]+\/[^\/]+\/(issues|pulls)\/[^\/]+$/;
+const ISSUE_FIELDS = ['url', 'title', 'body', 'updatedAt', 'comments', 'milestone', 'owner', 'user', 'id', 'closedBy', 'htmlUrl', 'assignee', 'labels', 'number', 'state', 'pullRequest', /* These are specific to PRs */ 'head', 'mergeable', 'mergedAt'];
+
+const USER_URL_RE = /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/users\/[^\/]+$/;
+const USER_FIELDS = ['url', 'login', 'avatarUrl'];
+
+// Filter the JSON response to only contain the fields we use so the cache does not blow up
+class JsonFilterPlugin {
+  responseMiddleware({status, data}) {
+    if (status === 304) { return null; }
+    if (_.isArray(data)) {
+      data = data.map((item) => {
+        return this.cull(item);
+      });
+    } else if (_.isObject(data)) {
+      data = this.cull(data);
+    }
+    return {data};
+  }
+  cull(item) {
+    if (ISSUE_URL_RE.test(item.url)) {
+      item = _.pick(item, ISSUE_FIELDS);
+      // If the Issue is closed then we can discard the body maybe
+      if (item.pullRequest) {
+        item.pullRequest = true;
+      }
+      if (item.state === 'closed') {
+        delete item.body;
+        delete item.owner;
+        delete item.closedBy;
+        delete item.assignee;
+      }
+      // TODO: recurse on the fields
+      return item;
+    } else if (USER_URL_RE.test(item.url)) {
+      return _.pick(item, USER_FIELDS);
+    } else {
+      return item;
+    }
+  }
+}
+
 
 class Client extends EventEmitter {
   constructor() {
@@ -90,7 +133,7 @@ class Client extends EventEmitter {
   }
   getCredentials() {
     return {
-      plugins: [SimpleVerbsPlugin, NativePromiseOnlyPlugin, AuthorizationPlugin, CamelCasePlugin, CacheHandlerPlugin],
+      plugins: [SimpleVerbsPlugin, NativePromiseOnlyPlugin, AuthorizationPlugin, CamelCasePlugin, new JsonFilterPlugin(), CacheHandlerPlugin],
       token: window.localStorage.getItem('gh-token'),
       username: window.localStorage.getItem('gh-username'),
       password: window.localStorage.getItem('gh-password'),

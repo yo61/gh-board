@@ -13,7 +13,10 @@ export default React.createClass({
   },
   getDefaultProps() {
     return {
-      renderError: () => <div className='loadable is-error'>Error Loading. Is the repo URL correct? are you connected to the internet? Are you logged in?</div>
+      renderError: (err) => {
+        console.error(err);
+        return (<div className='loadable is-error'>Error Loading. Is the repo URL correct? are you connected to the internet? Are you logged in?</div>);
+      }
     };
   },
   componentDidMount() {

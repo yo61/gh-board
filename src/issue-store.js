@@ -159,7 +159,7 @@ class IssueStore extends EventEmitter {
   }
   _fetchAllIssuesForRepo(repoOwner, repoName) {
     const issues = Client.getOcto().repos(repoOwner, repoName).issues.fetch;
-    return fetchAll(FETCHALL_MAX, issues)
+    return fetchAll(FETCHALL_MAX, issues, {per_page: 100, state: 'all'})
     .then((vals) => {
       return _.map(vals, (issue) => {
         return this.issueNumberToCard(repoOwner, repoName, issue.number, issue, GRAPH_CACHE);
