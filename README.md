@@ -190,3 +190,4 @@ Just specify a GitHub repository in the URL and off you go!
 - [ ] cache issues-updated-since requests and CI status requests in Session Storage instead of IndexedDB so they can be cleared easier
 - [ ] add effort labels XS, S, M, L, XL
 - [ ] add GitHub search
+
